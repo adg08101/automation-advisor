@@ -6,7 +6,8 @@ export class TestRailClient {
   private readonly http: AxiosInstance;
 
   constructor(env: Env) {
-    const base = `${env.TESTRAIL_BASE_URL.replace(/\/$/, "")}/index.php?/api/v2`;
+    const normalizedBase = normalizeTestRailBaseUrl(env.TESTRAIL_BASE_URL);
+    const base = `${normalizedBase}/index.php?/api/v2`;
     this.http = axios.create({
       baseURL: base,
       timeout: 15000,
@@ -21,8 +22,8 @@ export class TestRailClient {
     try {
       const response = await this.http.get<T>(path);
       return response.data;
-    } catch {
-      throw new HttpError(502, "Failed to fetch data from TestRail.");
+    } catch (error) {
+      throw mapTestRailError(error, "fetch data");
     }
   }
 
@@ -30,8 +31,8 @@ export class TestRailClient {
     try {
       const response = await this.http.post<T>(path, body);
       return response.data;
-    } catch {
-      throw new HttpError(502, "TestRail rejected the request.");
+    } catch (error) {
+      throw mapTestRailError(error, "submit data");
     }
   }
 
@@ -64,4 +65,50 @@ export class TestRailClient {
 
     return items;
   }
+}
+
+function normalizeTestRailBaseUrl(rawBaseUrl: string): string {
+  return rawBaseUrl
+    .trim()
+    .replace(/\/$/, "")
+    .replace(/\/index\.php\?.*$/i, "")
+    .replace(/\/api\/v2.*$/i, "");
+}
+
+function mapTestRailError(error: unknown, action: string): HttpError {
+  if (!axios.isAxiosError(error)) {
+    return new HttpError(502, `Failed to ${action} from TestRail.`);
+  }
+
+  const status = error.response?.status;
+  if (status === 401 || status === 403) {
+    return new HttpError(
+      502,
+      "TestRail authentication failed (401/403). Verify TESTRAIL_BASE_URL, TESTRAIL_USERNAME, TESTRAIL_API_KEY, and that this user has access to the target TestRail instance/projects.",
+    );
+  }
+
+  if (status === 404) {
+    return new HttpError(
+      502,
+      "TestRail endpoint not found (404). Verify TESTRAIL_BASE_URL for your instance.",
+    );
+  }
+
+  if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
+    return new HttpError(
+      502,
+      "Could not reach TestRail. Verify TESTRAIL_BASE_URL and network connectivity.",
+    );
+  }
+
+  if (error.code === "ECONNABORTED") {
+    return new HttpError(504, "TestRail request timed out. Please retry.");
+  }
+
+  if (typeof status === "number") {
+    return new HttpError(502, `TestRail request failed with status ${status}.`);
+  }
+
+  return new HttpError(502, `Failed to ${action} from TestRail.`);
 }

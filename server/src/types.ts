@@ -51,7 +51,7 @@ export type AutomationEvaluation = {
   dataComplexity: number;
   maintenanceRisk: number;
   roi: number;
-  estimatedEffort: string;
+  estimatedEffort: number;
   risks: string[];
   reasoning: string;
   suggestedPlaywrightTestName: string;

@@ -4,11 +4,11 @@ import { z } from "zod";
 dotenv.config();
 
 const envSchema = z.object({
-  TESTRAIL_BASE_URL: z.string().url(),
-  TESTRAIL_USERNAME: z.string().min(1),
-  TESTRAIL_API_KEY: z.string().min(1),
-  OPENAI_API_KEY: z.string().min(1),
-  OPENAI_MODEL: z.string().min(1),
+  TESTRAIL_BASE_URL: z.string().trim().url(),
+  TESTRAIL_USERNAME: z.string().trim().min(1),
+  TESTRAIL_API_KEY: z.string().trim().min(1),
+  OPENAI_API_KEY: z.string().trim().min(1),
+  OPENAI_MODEL: z.string().trim().min(1),
   PORT: z.coerce.number().int().positive().default(4000),
 });
 
