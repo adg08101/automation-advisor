@@ -31,6 +31,16 @@ function scoreBandMessage(score: number): string {
   return "Automate Soon";
 }
 
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    const responseError = error.response?.data?.error;
+    if (typeof responseError === "string" && responseError.trim().length > 0) {
+      return responseError;
+    }
+  }
+  return fallback;
+}
+
 function SectionTree({
   sections,
   casesBySection,
@@ -162,7 +172,7 @@ export default function App() {
       .then(setProjects)
       .catch((error) => {
         if (!axios.isCancel(error)) {
-          setProjectsError("Could not load projects.");
+          setProjectsError(getApiErrorMessage(error, "Could not load projects."));
         }
       })
       .finally(() => setLoadingProjects(false));
@@ -185,7 +195,7 @@ export default function App() {
       })
       .catch((error) => {
         if (!axios.isCancel(error)) {
-          setProjectsError("Failed to load suites/templates for selected project.");
+          setProjectsError(getApiErrorMessage(error, "Failed to load suites/templates for selected project."));
         }
       })
       .finally(() => setLoadingSuites(false));
@@ -201,7 +211,7 @@ export default function App() {
       .then(setTree)
       .catch((error) => {
         if (!axios.isCancel(error)) {
-          setProjectsError("Failed to load sections and cases.");
+          setProjectsError(getApiErrorMessage(error, "Failed to load sections and cases."));
         }
       })
       .finally(() => setLoadingTree(false));

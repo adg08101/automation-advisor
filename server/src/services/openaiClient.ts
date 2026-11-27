@@ -42,7 +42,8 @@ export class OpenAiAdvisor {
       }
       const parsed = JSON.parse(content) as JsonObject;
       return parsed;
-    } catch {
+    } catch (error) {
+      console.error("OpenAI API error:", error);
       throw new HttpError(
         502,
         "OpenAI request failed or returned malformed JSON.",
@@ -78,6 +79,8 @@ function validateOrThrow<T>(
 ): T {
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
+    console.error(`${message}. Validation errors:`, parsed.error.issues);
+    console.error("Received payload:", JSON.stringify(payload));
     throw new HttpError(502, message);
   }
   return parsed.data;

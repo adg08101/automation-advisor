@@ -37,8 +37,10 @@ export function createApiRouter(services: Services): Router {
 
   router.get("/projects", async (_req, res, next) => {
     try {
-      const projects =
-        await services.testrail.get<TestRailProject[]>("get_projects");
+      const response = await services.testrail.get<
+        { projects: TestRailProject[] } | TestRailProject[]
+      >("get_projects");
+      const projects = Array.isArray(response) ? response : response.projects;
       res.json(projects.filter((project) => !project.is_completed));
     } catch (error) {
       next(error);
@@ -48,9 +50,10 @@ export function createApiRouter(services: Services): Router {
   router.get("/projects/:projectId/suites", async (req, res, next) => {
     try {
       const projectId = parseId(req.params.projectId, "project ID");
-      const suites = await services.testrail.get<TestRailSuite[]>(
-        `get_suites/${projectId}`,
-      );
+      const response = await services.testrail.get<
+        { suites: TestRailSuite[] } | TestRailSuite[]
+      >(`get_suites/${projectId}`);
+      const suites = Array.isArray(response) ? response : response.suites;
       res.json(suites);
     } catch (error) {
       next(error);
@@ -128,12 +131,24 @@ export function createApiRouter(services: Services): Router {
   router.post("/score", async (req, res, next) => {
     try {
       const input = scoreInputSchema.parse(req.body);
+      console.log(`Scoring case ${input.caseId}...`);
+
       const testCase = await services.testrail.get<TestRailCaseDetail>(
         `get_case/${input.caseId}`,
       );
+      console.log(`Retrieved case: ${testCase.title}`);
+
       const extracted = extractCaseContent(testCase);
+      console.log(
+        `Extracted case content with ${extracted.steps.length} steps`,
+      );
+
       const sanitized = sanitizeForAi(JSON.stringify(extracted));
+      console.log(`Sanitized content length: ${sanitized.length}`);
+
       const evaluation = await services.openai.evaluateCase(sanitized);
+      console.log("Received evaluation from OpenAI");
+
       const finalScore = calculateFinalScore(evaluation);
       const recommendation = recommendationForScore(finalScore);
 
